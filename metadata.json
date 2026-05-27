@@ -1,0 +1,6 @@
+{
+  "name": "Floxby Creative",
+  "description": "ORM SaaS Dashboard for evaluating brand sentiment, mentions, and competitor metrics",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
