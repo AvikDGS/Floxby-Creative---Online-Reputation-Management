@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { CompetitorChart } from './CompetitorChart';
 import { MentionsFeed } from './MentionsFeed';
@@ -35,17 +36,33 @@ const metrics = [
 ];
 
 export function Dashboard() {
+  const [connected, setConnected] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const list: string[] = [];
+    if (localStorage.getItem('facebook_token')) list.push('Facebook');
+    if (localStorage.getItem('instagram_token')) list.push('Instagram');
+    setConnected(list);
+  }, []);
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
-      <header className="mb-0">
-        <motion.h1 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="text-2xl font-bold text-white mb-1"
-        >
-          Reputation Overview
-        </motion.h1>
+      <header className="mb-0 flex justify-between items-end">
+        <div>
+          <motion.h1 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="text-2xl font-bold text-white mb-1"
+          >
+            Reputation Overview
+          </motion.h1>
+          {connected.length > 0 && (
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mt-2">
+              Connected: {connected.join(' • ')}
+            </p>
+          )}
+        </div>
       </header>
 
       {/* Metrics Row */}

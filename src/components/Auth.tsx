@@ -27,7 +27,7 @@ export function Auth() {
           password,
         });
         if (error) throw error;
-        navigate('/dashboard');
+        navigate('/connect');
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -40,7 +40,7 @@ export function Auth() {
         });
         if (error) throw error;
         // Depending on Supabase settings, email confirmation might be required
-        navigate('/dashboard');
+        navigate('/connect');
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred during authentication.');
@@ -54,7 +54,7 @@ export function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`
+          redirectTo: `${window.location.origin}/connect`
         }
       });
       if (error) throw error;

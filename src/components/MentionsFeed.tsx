@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageCircle, MessageSquare, MonitorPlay, Sparkles, TrendingUp, X } from 'lucide-react';
 import { mockMentions } from '../data';
@@ -27,16 +27,48 @@ function SourceIconBadge({ source }: { source: Mention['source'] }) {
     case 'G2':
       return <div className="w-6 h-6 rounded-full bg-[#FF492C] flex items-center justify-center text-[10px] font-bold text-white">G2</div>;
     default:
-      return <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-[10px] font-bold">{source.substring(0, 2)}</div>;
+      return <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-[10px] font-bold">{(source as string).substring(0, 2)}</div>;
   }
 }
 
 export function MentionsFeed() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [mentions, setMentions] = useState<Mention[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const toggleExpand = (id: string) => {
     setExpandedId(prev => prev === id ? null : id);
   };
+
+  const fetchMentions = () => {
+    setLoading(true);
+    const fbToken = localStorage.getItem('facebook_token') || '';
+    const igToken = localStorage.getItem('instagram_token') || '';
+    
+    fetch('/api/mentions?brand=Floxby', {
+      headers: {
+        'x-facebook-token': fbToken,
+        'x-instagram-token': igToken
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.length > 0) {
+          setMentions(data);
+        } else {
+          setMentions(mockMentions); // fallback
+        }
+      })
+      .catch(err => {
+        console.error('Failed to fetch mentions:', err);
+        setMentions(mockMentions); // fallback
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchMentions();
+  }, []);
 
   return (
     <motion.div 
@@ -45,14 +77,23 @@ export function MentionsFeed() {
       transition={{ duration: 0.4, delay: 0.4 }}
       className="flex flex-col h-full"
     >
-      <h3 className="text-sm font-bold uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-        <span className="w-1 h-4 bg-[#1D9E75]"></span>
-        Recent Mentions
-      </h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-sm font-bold uppercase tracking-[0.2em] flex items-center gap-2">
+          <span className="w-1 h-4 bg-[#1D9E75]"></span>
+          Recent Mentions {loading && <span className="text-xs text-brand lowercase tracking-normal">(fetching...)</span>}
+        </h3>
+        <button 
+          onClick={fetchMentions} 
+          disabled={loading}
+          className="text-xs font-bold px-3 py-1 bg-panel border border-panel-border rounded hover:bg-gray-800 transition-colors"
+        >
+          {loading ? 'Refreshing...' : 'Refresh Data'}
+        </button>
+      </div>
 
       <div className="flex-1 overflow-y-auto w-full pr-2">
         <div className="space-y-4">
-          {mockMentions.map((mention) => (
+          {mentions.map((mention) => (
             <div key={mention.id} className="p-4 bg-panel border border-panel-border rounded-2xl hover:bg-[#1A1A1E] transition-colors">
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">

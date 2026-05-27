@@ -1,0 +1,181 @@
+import { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { ArrowRight, CheckCircle2, Link as LinkIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+const integrations = [
+  {
+    id: 'facebook',
+    name: 'Facebook Page',
+    icon: 'f',
+    color: 'bg-[#1877F2]'
+  },
+  {
+    id: 'instagram',
+    name: 'Instagram Business',
+    icon: 'ig',
+    color: 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF]'
+  },
+  {
+    id: 'twitter',
+    name: 'X (Twitter)',
+    icon: '𝕏',
+    color: 'bg-black border border-[#333]'
+  },
+  {
+    id: 'linkedin',
+    name: 'LinkedIn',
+    icon: 'in',
+    color: 'bg-[#0A66C2]'
+  }
+];
+
+export function Connect() {
+  const navigate = useNavigate();
+  const [connected, setConnected] = useState<Record<string, boolean>>({
+    facebook: !!localStorage.getItem('facebook_token'),
+    instagram: !!localStorage.getItem('instagram_token'),
+    twitter: false,
+    linkedin: false,
+  });
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (!event.origin.endsWith('.run.app') && !event.origin.includes('localhost')) {
+        return;
+      }
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+        const { provider, search } = event.data;
+        const params = new URLSearchParams(search);
+        const code = params.get('code');
+        
+        if (code) {
+          const redirectUri = provider === 'facebook' 
+            ? window.location.origin + '/auth/callback/facebook' 
+            : window.location.origin + '/auth/callback/instagram';
+          try {
+            const res = await fetch('/api/auth/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ provider, code, redirectUri })
+            });
+            const data = await res.json();
+            if (data.token) {
+              localStorage.setItem(`${provider}_token`, data.token);
+              setConnected(prev => ({ ...prev, [provider]: true }));
+            }
+          } catch (e) {
+            console.error('Failed to exchange token:', e);
+          }
+        }
+        setLoadingId(null);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const handleConnect = async (id: string) => {
+    if (id !== 'facebook' && id !== 'instagram') {
+      setLoadingId(id);
+      setTimeout(() => {
+        setConnected(prev => ({ ...prev, [id]: true }));
+        setLoadingId(null);
+      }, 1500);
+      return;
+    }
+
+    setLoadingId(id);
+    const redirectUri = id === 'facebook' 
+      ? window.location.origin + '/auth/callback/facebook' 
+      : window.location.origin + '/auth/callback/instagram';
+    try {
+      const response = await fetch(`/api/auth/url?provider=${id}&redirectUri=${encodeURIComponent(redirectUri)}`);
+      const { url } = await response.json();
+      window.open(url, 'oauth_popup', 'width=600,height=700');
+    } catch (e) {
+      console.error(e);
+      setLoadingId(null);
+    }
+  };
+
+  const handleContinue = () => {
+    navigate('/dashboard');
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4 relative overflow-hidden text-gray-100 font-sans selection:bg-brand/30">
+      <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-brand opacity-5 blur-[120px] rounded-full pointer-events-none"></div>
+      
+      <div className="w-full max-w-md relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="bg-panel border border-panel-border rounded-3xl p-8 shadow-sm relative overflow-hidden"
+        >
+          <div className="w-12 h-12 bg-brand/10 border border-brand/20 rounded-2xl flex items-center justify-center mb-6">
+            <LinkIcon className="w-6 h-6 text-brand" />
+          </div>
+
+          <h2 className="text-xl font-bold mb-2 text-white">
+            Connect your sources
+          </h2>
+          <p className="text-sm text-gray-400 mb-8 leading-relaxed">
+            Connect your brand channels to start monitoring mentions and sentiment across the web. We also automatically scan public sources like Reddit and Google News.
+          </p>
+
+          <div className="space-y-3 mb-8">
+            {integrations.map(integration => {
+              const isConnected = connected[integration.id];
+              const isLoading = loadingId === integration.id;
+              
+              return (
+                <div key={integration.id} className="flex items-center justify-between p-4 bg-[#0A0A0B] border border-panel-border rounded-2xl">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full ${integration.color} flex items-center justify-center text-xs font-bold text-white`}>
+                      {integration.icon}
+                    </div>
+                    <span className="font-semibold text-sm">{integration.name}</span>
+                  </div>
+
+                  <button
+                    onClick={() => handleConnect(integration.id)}
+                    disabled={isConnected || isLoading}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 ${
+                      isConnected 
+                        ? 'bg-brand/10 text-brand' 
+                        : 'bg-white text-black hover:bg-gray-200'
+                    }`}
+                  >
+                    {isLoading ? (
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                    ) : isConnected ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        Connected
+                      </>
+                    ) : (
+                      'Connect'
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {Object.values(connected).some(Boolean) && (
+            <button 
+              onClick={handleContinue}
+              className="w-full py-3 bg-brand hover:bg-brand-hover text-black rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              Continue to Dashboard
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+        </motion.div>
+      </div>
+    </div>
+  );
+}

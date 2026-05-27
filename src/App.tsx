@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { Dashboard } from './components/Dashboard';
 import { Auth } from './components/Auth';
+import { Connect } from './components/Connect';
 import { supabase } from './lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 
@@ -53,11 +54,15 @@ export default function App() {
       <Routes>
         <Route 
           path="/login" 
-          element={!session ? <Auth /> : <Navigate to="/dashboard" replace />} 
+          element={!session ? <Auth /> : <Navigate to="/connect" replace />} 
         />
         <Route 
           path="/signup" 
-          element={!session ? <Auth /> : <Navigate to="/dashboard" replace />} 
+          element={!session ? <Auth /> : <Navigate to="/connect" replace />} 
+        />
+        <Route 
+          path="/connect" 
+          element={session ? <Connect /> : <Navigate to="/login" replace />} 
         />
         <Route 
           path="/dashboard" 
