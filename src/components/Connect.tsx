@@ -17,8 +17,8 @@ const integrations = [
     color: 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF]'
   },
   {
-    id: 'twitter',
-    name: 'X (Twitter)',
+    id: 'x',
+    name: 'Connect X',
     icon: '𝕏',
     color: 'bg-black border border-[#333]'
   },
@@ -35,13 +35,13 @@ export function Connect() {
   const [connected, setConnected] = useState<Record<string, boolean>>({
     facebook: !!localStorage.getItem('facebook_token'),
     instagram: !!localStorage.getItem('instagram_token'),
-    twitter: false,
+    x: !!localStorage.getItem('x_token'),
     linkedin: false,
   });
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const handleConnect = async (id: string) => {
-    if (id !== 'facebook' && id !== 'instagram') {
+    if (id !== 'facebook' && id !== 'instagram' && id !== 'x') {
       setLoadingId(id);
       setTimeout(() => {
         setConnected(prev => ({ ...prev, [id]: true }));
@@ -58,6 +58,11 @@ export function Connect() {
     } else if (id === 'instagram') {
       const instagramAuthUrl = `https://api.instagram.com/oauth/authorize?client_id=${import.meta.env.VITE_INSTAGRAM_APP_ID}&redirect_uri=${window.location.origin}/auth/callback/instagram&scope=instagram_basic,instagram_manage_comments&response_type=code`;
       window.location.href = instagramAuthUrl;
+    } else if (id === 'x') {
+      // X OAuth 2.0 PKCE requires code_challenge. We use a simple static string for simulation/testing, 
+      // but in production it should be a dynamically generated PCKE challenge.
+      const xAuthUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${import.meta.env.VITE_X_CLIENT_ID}&redirect_uri=${window.location.origin}/auth/callback/x&scope=tweet.read%20users.read%20offline.access&state=state&code_challenge=challenge&code_challenge_method=plain`;
+      window.location.href = xAuthUrl;
     }
   };
 

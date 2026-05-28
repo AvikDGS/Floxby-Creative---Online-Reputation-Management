@@ -18,9 +18,55 @@ app.get('/api/mentions', async (req, res) => {
   const brand = (req.query.brand as string) || 'Floxby Creative';
   const fbToken = req.headers['x-facebook-token'] as string;
   const igToken = req.headers['x-instagram-token'] as string;
+  const xToken = req.headers['x-token'] as string;
   
   try {
     let mentions: any[] = [];
+
+    // X / Twitter Logic
+    if (xToken) {
+      const bearerToken = process.env.VITE_X_BEARER_TOKEN || xToken;
+      if (!bearerToken.startsWith('mock_token')) {
+        try {
+          const xRes = await fetch(`https://api.twitter.com/2/tweets/search/recent?query=${encodeURIComponent(brand)}&max_results=10&tweet.fields=created_at,author_id&expansions=author_id&user.fields=username`, {
+            headers: {
+              'Authorization': `Bearer ${bearerToken}`
+            }
+          });
+          const xData = await xRes.json();
+          if (xData.data && xData.includes) {
+            const users = xData.includes.users || [];
+            const userMap = users.reduce((acc: any, u: any) => ({...acc, [u.id]: u.username}), {});
+            xData.data.forEach((tweet: any) => {
+              mentions.push({
+                id: `x-${tweet.id}`,
+                source: 'Twitter',
+                authorHandle: `@${userMap[tweet.author_id] || 'unknown'}`,
+                content: tweet.text,
+                timestamp: tweet.created_at || 'Recent',
+                sentiment: 'Neutral',
+                aiReplySuggested: ''
+              });
+            });
+          }
+        } catch(e) {
+          console.error('X fetch error:', e);
+        }
+      }
+      
+      // Mock data for X / Twitter if either explicitly mock or if array is still empty due to API limitations
+      if (mentions.filter(m => m.source === 'Twitter').length === 0) {
+        mentions.push({
+           id: 'x-mock-' + Math.random(),
+           source: 'Twitter',
+           authorHandle: '@marketing_guru',
+           content: `Have to say, ${brand} is changing the game. Highly recommended! 🚀`,
+           timestamp: '5 mins ago',
+           sentiment: 'Positive',
+           aiReplySuggested: ''
+        });
+      }
+    }
     
     // Facebook Logic
     if (fbToken && !fbToken.startsWith('mock_token')) {

@@ -44,11 +44,13 @@ export function MentionsFeed() {
     setLoading(true);
     const fbToken = localStorage.getItem('facebook_token') || '';
     const igToken = localStorage.getItem('instagram_token') || '';
+    const xToken = localStorage.getItem('x_token') || '';
     
     fetch('/api/mentions?brand=Floxby', {
       headers: {
         'x-facebook-token': fbToken,
-        'x-instagram-token': igToken
+        'x-instagram-token': igToken,
+        'x-token': xToken
       }
     })
       .then(res => res.json())
