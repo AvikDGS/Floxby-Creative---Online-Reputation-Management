@@ -42,7 +42,7 @@ export function Dashboard() {
     const list: string[] = [];
     if (localStorage.getItem('facebook_token')) list.push('Facebook');
     if (localStorage.getItem('instagram_token')) list.push('Instagram');
-    if (localStorage.getItem('x_token')) list.push('X');
+    if (localStorage.getItem('x_token') || localStorage.getItem('x_access_token')) list.push('X');
     setConnected(list);
   }, []);
 

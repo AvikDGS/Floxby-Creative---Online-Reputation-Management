@@ -35,7 +35,7 @@ export function Connect() {
   const [connected, setConnected] = useState<Record<string, boolean>>({
     facebook: !!localStorage.getItem('facebook_token'),
     instagram: !!localStorage.getItem('instagram_token'),
-    x: !!localStorage.getItem('x_token'),
+    x: !!localStorage.getItem('x_token') || !!localStorage.getItem('x_access_token'),
     linkedin: false,
   });
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -59,9 +59,18 @@ export function Connect() {
       const instagramAuthUrl = `https://api.instagram.com/oauth/authorize?client_id=${import.meta.env.VITE_INSTAGRAM_APP_ID}&redirect_uri=${window.location.origin}/auth/callback/instagram&scope=instagram_basic,instagram_manage_comments&response_type=code`;
       window.location.href = instagramAuthUrl;
     } else if (id === 'x') {
-      // X OAuth 2.0 PKCE requires code_challenge. We use a simple static string for simulation/testing, 
-      // but in production it should be a dynamically generated PCKE challenge.
-      const xAuthUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${import.meta.env.VITE_X_CLIENT_ID}&redirect_uri=${window.location.origin}/auth/callback/x&scope=tweet.read%20users.read%20offline.access&state=state&code_challenge=challenge&code_challenge_method=plain`;
+      const generateRandomString = (length: number) => {
+        const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+        let result = '';
+        for (let i = 0; i < length; i++) {
+          result += charset[Math.floor(Math.random() * charset.length)];
+        }
+        return result;
+      };
+      const codeVerifier = generateRandomString(64);
+      localStorage.setItem('x_code_verifier', codeVerifier);
+      
+      const xAuthUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${import.meta.env.VITE_X_CLIENT_ID}&redirect_uri=${window.location.origin}/auth/callback/x&scope=tweet.read%20users.read%20offline.access&state=state&code_challenge=${codeVerifier}&code_challenge_method=plain`;
       window.location.href = xAuthUrl;
     }
   };

@@ -44,7 +44,7 @@ export function MentionsFeed() {
     setLoading(true);
     const fbToken = localStorage.getItem('facebook_token') || '';
     const igToken = localStorage.getItem('instagram_token') || '';
-    const xToken = localStorage.getItem('x_token') || '';
+    const xToken = localStorage.getItem('x_token') || localStorage.getItem('x_access_token') || '';
     
     fetch('/api/mentions?brand=Floxby', {
       headers: {
