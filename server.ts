@@ -12,98 +12,7 @@ app.use(express.json());
 
 const parser = new Parser();
 
-app.get('/api/auth/url', (req, res) => {
-  const { provider, redirectUri } = req.query;
-  let url = '';
-  
-  if (provider === 'facebook') {
-    const params = new URLSearchParams({
-      client_id: process.env.FACEBOOK_APP_ID || '',
-      redirect_uri: redirectUri as string,
-      response_type: 'code',
-      scope: 'pages_read_engagement,pages_manage_posts,pages_read_user_content,pages_manage_engagement',
-    });
-    url = `https://www.facebook.com/v18.0/dialog/oauth?${params}`;
-  } else if (provider === 'instagram') {
-    const params = new URLSearchParams({
-      client_id: process.env.INSTAGRAM_APP_ID || '',
-      redirect_uri: redirectUri as string,
-      response_type: 'code',
-      scope: 'instagram_basic,instagram_manage_comments,instagram_manage_insights',
-    });
-    url = `https://api.instagram.com/oauth/authorize?${params}`;
-  }
-  
-  res.json({ url });
-});
 
-// Since Facebook and IG both redirect here, we handle it and send back to parent
-app.get(['/auth/callback/facebook', '/auth/callback/instagram'], async (req, res) => {
-  const provider = req.path.includes('facebook') ? 'facebook' : 'instagram';
-  
-  res.send(`
-    <html>
-      <head><title>Authentication successful</title></head>
-      <body>
-        <script>
-          if (window.opener) {
-            window.opener.postMessage({ 
-               type: 'OAUTH_AUTH_SUCCESS',
-               provider: '${provider}',
-               search: window.location.search,
-               hash: window.location.hash
-            }, '*');
-            window.close();
-          } else {
-            window.location.href = '/connect';
-          }
-        </script>
-        <p>Authentication successful. This window should close automatically.</p>
-      </body>
-    </html>
-  `);
-});
-
-app.post('/api/auth/token', async (req, res) => {
-  const { provider, code, redirectUri } = req.body;
-  try {
-    if (provider === 'facebook') {
-      const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token`;
-      const params = new URLSearchParams({
-        client_id: process.env.FACEBOOK_APP_ID || '',
-        redirect_uri: redirectUri,
-        client_secret: process.env.FACEBOOK_APP_SECRET || '',
-        code,
-      });
-      const response = await fetch(`${tokenUrl}?${params}`);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error?.message || 'Token exchange failed');
-      res.json({ token: data.access_token });
-    } else if (provider === 'instagram') {
-      const tokenUrl = `https://api.instagram.com/oauth/access_token`;
-      const formData = new URLSearchParams({
-        client_id: process.env.INSTAGRAM_APP_ID || '',
-        redirect_uri: redirectUri,
-        client_secret: process.env.INSTAGRAM_APP_SECRET || '',
-        code,
-        grant_type: 'authorization_code',
-      });
-      const response = await fetch(tokenUrl, {
-        method: 'POST',
-        body: formData
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error_message || 'Token exchange failed');
-      res.json({ token: data.access_token });
-    } else {
-      res.status(400).json({ error: 'Invalid provider' });
-    }
-  } catch (err: any) {
-    console.error('Token exchange error:', err);
-    // Return a mock token if real exchange fails to allow UI to continue if credentials aren't set
-    res.json({ token: `mock_token_${provider}_${Math.random()}` });
-  }
-});
 
 app.get('/api/mentions', async (req, res) => {
   const brand = (req.query.brand as string) || 'Floxby Creative';
@@ -345,8 +254,24 @@ Mentions: ${JSON.stringify(itemsToAnalyze)}`;
             mentions[r.index].aiReplySuggested = r.aiReplySuggested || mentions[r.index].aiReplySuggested;
           }
         });
-      } catch (e) {
-        console.error('Gemini error:', e);
+      } catch (e: any) {
+        if (e?.status === 429 || e?.message?.includes('429') || e?.message?.includes('RESOURCE_EXHAUSTED')) {
+          console.warn('Gemini API rate limit exceeded. Falling back to heuristic sentiments.');
+          mentions.forEach(m => {
+            const text = (m.content || '').toLowerCase();
+            if (text.match(/love|great|good|awesome|amazing|incredible|thank|best|recommend/)) {
+              m.sentiment = 'Positive';
+              m.aiReplySuggested = m.aiReplySuggested || 'Thank you for the wonderful feedback!';
+            } else if (text.match(/bad|terrible|awful|worst|hate|struggle|fix|error|fail|issue/)) {
+              m.sentiment = 'Negative';
+              m.aiReplySuggested = m.aiReplySuggested || 'We apologize for the inconvenience. Please DM us so we can help.';
+            } else {
+              if (m.sentiment === 'Neutral' && !m.aiReplySuggested) m.aiReplySuggested = 'Thanks for reaching out.';
+            }
+          });
+        } else {
+          console.error('Gemini error:', e);
+        }
       }
     } else {
       console.warn('No GEMINI_API_KEY provided; skipping AI sentiment analysis.');

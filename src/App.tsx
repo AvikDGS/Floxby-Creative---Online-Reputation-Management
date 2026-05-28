@@ -5,6 +5,7 @@ import { TopBar } from './components/TopBar';
 import { Dashboard } from './components/Dashboard';
 import { Auth } from './components/Auth';
 import { Connect } from './components/Connect';
+import { OAuthCallback } from './components/OAuthCallback';
 import { supabase } from './lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 
@@ -63,6 +64,10 @@ export default function App() {
         <Route 
           path="/connect" 
           element={session ? <Connect /> : <Navigate to="/login" replace />} 
+        />
+        <Route 
+          path="/auth/callback/:provider" 
+          element={<OAuthCallback />} 
         />
         <Route 
           path="/dashboard" 

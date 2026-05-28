@@ -40,42 +40,6 @@ export function Connect() {
   });
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      if (!event.origin.endsWith('.run.app') && !event.origin.includes('localhost')) {
-        return;
-      }
-      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
-        const { provider, search } = event.data;
-        const params = new URLSearchParams(search);
-        const code = params.get('code');
-        
-        if (code) {
-          const redirectUri = provider === 'facebook' 
-            ? window.location.origin + '/auth/callback/facebook' 
-            : window.location.origin + '/auth/callback/instagram';
-          try {
-            const res = await fetch('/api/auth/token', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ provider, code, redirectUri })
-            });
-            const data = await res.json();
-            if (data.token) {
-              localStorage.setItem(`${provider}_token`, data.token);
-              setConnected(prev => ({ ...prev, [provider]: true }));
-            }
-          } catch (e) {
-            console.error('Failed to exchange token:', e);
-          }
-        }
-        setLoadingId(null);
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
   const handleConnect = async (id: string) => {
     if (id !== 'facebook' && id !== 'instagram') {
       setLoadingId(id);
@@ -87,16 +51,13 @@ export function Connect() {
     }
 
     setLoadingId(id);
-    const redirectUri = id === 'facebook' 
-      ? window.location.origin + '/auth/callback/facebook' 
-      : window.location.origin + '/auth/callback/instagram';
-    try {
-      const response = await fetch(`/api/auth/url?provider=${id}&redirectUri=${encodeURIComponent(redirectUri)}`);
-      const { url } = await response.json();
-      window.open(url, 'oauth_popup', 'width=600,height=700');
-    } catch (e) {
-      console.error(e);
-      setLoadingId(null);
+    
+    if (id === 'facebook') {
+      const facebookAuthUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${import.meta.env.VITE_FACEBOOK_APP_ID}&redirect_uri=${window.location.origin}/auth/callback/facebook&scope=pages_read_engagement,pages_manage_posts,pages_read_user_content,pages_manage_engagement&response_type=code`;
+      window.location.href = facebookAuthUrl;
+    } else if (id === 'instagram') {
+      const instagramAuthUrl = `https://api.instagram.com/oauth/authorize?client_id=${import.meta.env.VITE_INSTAGRAM_APP_ID}&redirect_uri=${window.location.origin}/auth/callback/instagram&scope=instagram_basic,instagram_manage_comments&response_type=code`;
+      window.location.href = instagramAuthUrl;
     }
   };
 
